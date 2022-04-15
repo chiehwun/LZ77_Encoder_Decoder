@@ -1,0 +1,18 @@
+// Document
+*.pdf
+*.txt
+
+// Directory
+incremetnal_db/*
+output_files/*
+simulation
+output_files
+db
+Doc
+
+// Verilog
+~$*
+*.mpf
+*.qpf
+*.qsf
+*.xml
