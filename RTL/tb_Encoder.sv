@@ -2,7 +2,8 @@
 `define CYCLE      30.0  
 `define End_CYCLE  100000
 
-`define PAT        "./img0/testdata_encoder.dat"
+`define PAT        "./my_img/testdata_encoder.dat"
+// `define PAT        "./img0/testdata_encoder.dat"
 // `define PAT        "./img1/testdata_encoder.dat"
 // `define PAT        "./img2/testdata_encoder.dat"
 
