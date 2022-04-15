@@ -3,16 +3,19 @@
 *.txt
 
 // Directory
-incremetnal_db/*
-output_files/*
+incremental_db
+output_files
 simulation
 output_files
 db
 Doc
+RTL/work/*
 
 // Verilog
+vsim.wlf
 ~$*
 *.mpf
+*.mti
 *.qpf
 *.qsf
 *.xml
