@@ -1,6 +1,7 @@
 // Document
 *.pdf
 *.txt
+~$*
 
 // Directory
 incremental_db
@@ -13,9 +14,11 @@ RTL/work/*
 
 // Verilog
 vsim.wlf
-~$*
 *.mpf
 *.mti
+
+// Quartus
 *.qpf
 *.qsf
 *.xml
+*.bak
