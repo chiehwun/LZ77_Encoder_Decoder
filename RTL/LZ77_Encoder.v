@@ -32,14 +32,14 @@ parameter 	[Wstate-1:0] 	Fin_S  = 4;
 // Output register
 reg 			valid;
 reg 			finish;
-reg [3:0] 		offset,    ans_offset;
+reg [3:0] 		offset,    ans_offset, c_ml;
 reg [2:0] 		match_len, ans_match_len;
 reg [Wchar-1:0] char_nxt,  ans_char_nxt;
 
 /********** Variables **********/
 reg [Wstate-1:0] 	cur_S, nxt_S;
 reg [Wchar-1:0]		in_str [0:In_len + rdn_len - 1]; // [In_len-1:0]
-reg [Wimg-1:0] 		char_cnt, sb, sb_prob, lb; // Index: 0 - 2048
+reg [Wimg-1:0] 		char_cnt, ans_char_cnt, sb, lb; // Index: 0 - 2048
 
 // Next State Logic
 always @(*) begin
@@ -54,7 +54,7 @@ always @(*) begin
 			nxt_S = (sb + char_cnt+1) < lb ? Enc_S : Out_S;
 		end
 		Out_S: begin // STATE 3
-			nxt_S = Enc_S;
+			nxt_S = in_str[lb + ans_match_len] == EndSgn ? Fin_S : Enc_S;
 		end
 		Fin_S: begin // STATE 4
 			nxt_S = Fin_S;
@@ -91,14 +91,14 @@ always @(*) begin
 			finish    = 0;
 		end
 		Enc_S: begin // STATE 2
-			valid     = 0;//sb_prob < lb ? 0 : 1;
+			valid     = 0;
 			offset    = 0;
 			match_len = match_len;
 			char_nxt  = 0;
 			finish    = 0;
 		end
 		Out_S: begin // STATE 3
-			offset    = lb - sb - char_cnt - 1;
+			offset    = ans_offset;
 			match_len = ans_match_len;
 			char_nxt  = in_str[lb + ans_match_len];
 			valid     = 1;
@@ -144,17 +144,17 @@ assign bundle_l = {	in_str[lb],
 assign bundle_xor = bundle_s ^ bundle_l;
 always @(*) begin
 	if(reset)
-		ans_match_len = 3'd0;
+		c_ml = 3'd0;
 	else begin
 		casex(bundle_xor)
-		56'h00000000000000: ans_match_len = 7;
-		56'h000000000000xx: ans_match_len = 6;
-		56'h0000000000xxxx: ans_match_len = 5;
-		56'h00000000xxxxxx: ans_match_len = 4;
-		56'h000000xxxxxxxx: ans_match_len = 3;
-		56'h0000xxxxxxxxxx: ans_match_len = 2;
-		56'h00xxxxxxxxxxxx: ans_match_len = 1;
-		default: 			ans_match_len = 0;
+		56'h00000000000000: c_ml = 7;
+		56'h000000000000xx: c_ml = 6;
+		56'h0000000000xxxx: c_ml = 5;
+		56'h00000000xxxxxx: c_ml = 4;
+		56'h000000xxxxxxxx: c_ml = 3;
+		56'h0000xxxxxxxxxx: c_ml = 2;
+		56'h00xxxxxxxxxxxx: c_ml = 1;
+		default: 			c_ml = 0;
 		endcase
 	end
 end
@@ -168,8 +168,9 @@ always @(posedge clk/* or cur_S*/) begin
 	case(cur_S)
 		In_S: begin // STATE 0
 			sb 		<= 0;
-			sb_prob <= 0;
 			lb 		<= 0;
+			ans_offset <= 0;
+			ans_match_len <= 0;
 			if(reset)
 				char_cnt <= 0;
 			else begin
@@ -182,30 +183,37 @@ always @(posedge clk/* or cur_S*/) begin
 		end
 		Out_S0: begin // STATE 1
 			sb 		 <= 0;
-			sb_prob  <= 0;
 			lb 		 <= 1;
 			char_cnt <= 0;
 			ans_offset <= 0;
+			ans_match_len <= 0;
 		end
 		Enc_S: begin // STATE 2
 			sb <= sb; // sb_test;
 			lb <= lb; // lb_test;
-			ans_offset <= offset;
-			char_cnt <= char_cnt + (sb + char_cnt+1 < lb ? 1:0);
-			// sb_prob <= sb + char_cnt; // char_cnt(old)
+			char_cnt <= 
+				char_cnt + (sb + char_cnt+1 < lb ? 1:0);
+			if(c_ml > ans_match_len) begin
+				ans_offset <= lb - sb - char_cnt - 1;
+				ans_match_len <= c_ml;
+			end
 		end
 		Out_S: begin // STATE 3
-			if(lb + match_len - sb < Wsearch) // lb(old)
+			if(lb + ans_match_len - sb < Wsearch)
 				sb <= 0;
 			else
-				sb <= sb + match_len;
-			lb <= lb + match_len;
+				sb <= (lb + ans_match_len + 1) - Wsearch;
+			lb <= lb + ans_match_len + 1;
 			char_cnt <= 0;
+			ans_offset <= 0;
+			ans_match_len <= 0;
 		end
 		default: begin
 			sb <= 0;
 			lb <= 0;
 			char_cnt <= 0;
+			ans_offset <= 0;
+			ans_match_len <= 0;
 		end
 	endcase
 end
