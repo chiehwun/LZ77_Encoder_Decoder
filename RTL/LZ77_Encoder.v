@@ -13,19 +13,19 @@ assign encode = 1;
 // Define Width
 parameter Wsearch = 9;				// Search buffer	=>  9 chars
 parameter Wchar   = 8;				// char  			=>  8 bits
-parameter In_len  = 2049;			// 2049 // 22
+parameter In_len  = 2049;			// 2049 // 22 // 1025
 parameter rdn_len = Wsearch - 3;	// Redundant length for in_str
 parameter Wimg    = 12;				// img_length: 2049 => 12 bits
-parameter Wstate  = 3;				// state 0-4        =>  3 bits
+parameter Wstate  = 2;				// state 0-3        =>  3 bits
 
 // Constant
 parameter   [Wchar-1:0]	    EndSgn = 8'h24; // Dollar sign: '$' 
 
 // Define State
 parameter 	[Wstate-1:0] 	In_S   = 0;
-parameter 	[Wstate-1:0] 	Enc_S  = 2;
-parameter 	[Wstate-1:0] 	Out_S  = 3;
-parameter 	[Wstate-1:0] 	Fin_S  = 4;
+parameter 	[Wstate-1:0] 	Enc_S  = 1;
+parameter 	[Wstate-1:0] 	Out_S  = 2;
+parameter 	[Wstate-1:0] 	Fin_S  = 3;
 
 
 // Output register
@@ -64,38 +64,38 @@ end
 always @(*) begin
 	case (cur_S)
 		In_S: begin // STATE 0
+			valid     = 0;
 			offset    = 0;
 			match_len = 0;
 			char_nxt  = 0;
-			valid     = 0;
 			finish    = 0;
 		end
-		Enc_S: begin // STATE 2
+		Enc_S: begin // STATE 1
 			valid     = 0;
 			offset    = 0;
-			match_len = match_len;
+			match_len = 0;
 			char_nxt  = 0;
 			finish    = 0;
 		end
-		Out_S: begin // STATE 3
+		Out_S: begin // STATE 2
+			valid     = 1;
 			offset    = ans_offset;
 			match_len = ans_match_len;
 			char_nxt  = in_str[lb + ans_match_len];
-			valid     = 1;
 			finish    = 0;
 		end
-		Fin_S: begin // STATE 4
+		Fin_S: begin // STATE 3
+			valid     = 0;
 			offset    = 0;
 			match_len = 0;
 			char_nxt  = 0;
-			valid     = 0;
 			finish    = 1;
 		end
 		default: begin
+			valid     = 0;
 			offset    = 0;
 			match_len = 0;
 			char_nxt  = 0;
-			valid     = 0;
 			finish    = 0;
 		end
 	endcase
@@ -106,7 +106,7 @@ parameter sb_test = 10;
 parameter lb_test = 13;
 
 // String Matching (Comb. ckt.)
-wire [63:0] bundle_s, bundle_l, bundle_xor;
+wire [55:0] bundle_s, bundle_l, bundle_xor;
 assign bundle_s = {	in_str[sb + char_cnt],
 					in_str[sb + char_cnt + 1],
 					in_str[sb + char_cnt + 2],
@@ -158,16 +158,16 @@ always @(posedge clk/* or cur_S*/) begin
 					char_cnt <= 0;
 				else
 					in_str[char_cnt] <= chardata;
-					char_cnt <= char_cnt + 1;
+					char_cnt <= char_cnt + 12'd1;
 			end
 		end
 		Enc_S: begin // STATE 2
 			sb <= sb; // sb_test;
 			lb <= lb; // lb_test;
 			char_cnt <= 
-				char_cnt + (sb + char_cnt+1 < lb ? 1:0);
+				char_cnt + (sb + char_cnt + 12'd1 < lb ? 12'd1:12'd0);
 			if(c_ml > ans_match_len) begin
-				ans_offset <= lb - sb - char_cnt - 1;
+				ans_offset <= lb - sb - char_cnt - 12'd1;
 				ans_match_len <= c_ml;
 			end
 		end
@@ -175,8 +175,8 @@ always @(posedge clk/* or cur_S*/) begin
 			if(lb + ans_match_len - sb < Wsearch)
 				sb <= 0;
 			else
-				sb <= (lb + ans_match_len + 1) - Wsearch;
-			lb <= lb + ans_match_len + 1;
+				sb <= (lb + ans_match_len + 12'd1) - Wsearch;
+			lb <= lb + ans_match_len + 12'd1;
 			char_cnt <= 0;
 			ans_offset <= 0;
 			ans_match_len <= 0;
@@ -191,4 +191,3 @@ always @(posedge clk/* or cur_S*/) begin
 	endcase
 end
 endmodule
-
