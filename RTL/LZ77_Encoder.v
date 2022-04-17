@@ -13,7 +13,7 @@ assign encode = 1;
 // Define Width
 parameter Wsearch = 9;				// Search buffer	=>  9 chars
 parameter Wchar   = 8;				// char  			=>  8 bits
-parameter In_len  = 22;			// 2049 // 22
+parameter In_len  = 2049;			// 2049 // 22
 parameter rdn_len = Wsearch - 3;	// Redundant length for in_str
 parameter Wimg    = 12;				// img_length: 2049 => 12 bits
 parameter Wstate  = 3;				// state 0-4        =>  3 bits
@@ -23,7 +23,6 @@ parameter   [Wchar-1:0]	    EndSgn = 8'h24; // Dollar sign: '$'
 
 // Define State
 parameter 	[Wstate-1:0] 	In_S   = 0;
-parameter 	[Wstate-1:0] 	Out_S0 = 1;
 parameter 	[Wstate-1:0] 	Enc_S  = 2;
 parameter 	[Wstate-1:0] 	Out_S  = 3;
 parameter 	[Wstate-1:0] 	Fin_S  = 4;
@@ -34,7 +33,7 @@ reg 			valid;
 reg 			finish;
 reg [3:0] 		offset,    ans_offset, c_ml;
 reg [2:0] 		match_len, ans_match_len;
-reg [Wchar-1:0] char_nxt,  ans_char_nxt;
+reg [Wchar-1:0] char_nxt;
 
 /********** Variables **********/
 reg [Wstate-1:0] 	cur_S, nxt_S;
@@ -44,33 +43,21 @@ reg [Wimg-1:0] 		char_cnt, ans_char_cnt, sb, lb; // Index: 0 - 2048
 // Next State Logic
 always @(*) begin
 	case (cur_S)
-		In_S: begin // STATE 0
-			nxt_S = (char_cnt == In_len)? Out_S0 : In_S;
-		end
-		Out_S0: begin // STATE 1
-			nxt_S = Enc_S;
-		end
-		Enc_S: begin // STATE 2
+		In_S: 	// STATE 0
+			nxt_S = (char_cnt == In_len)? Out_S : In_S;
+		Enc_S: 	// STATE 2
 			nxt_S = (sb + char_cnt+1) < lb ? Enc_S : Out_S;
-		end
-		Out_S: begin // STATE 3
+		Out_S: 	// STATE 3
 			nxt_S = in_str[lb + ans_match_len] == EndSgn ? Fin_S : Enc_S;
-		end
-		Fin_S: begin // STATE 4
+		Fin_S: 	// STATE 4
 			nxt_S = Fin_S;
-		end
 		default: nxt_S = In_S;
 	endcase
 end
 
 // State Register
 always @(posedge clk) begin
-    // Initialize all register
-	if(reset) begin
-        cur_S <= In_S;
-	end
-    else
-        cur_S <= nxt_S;
+	cur_S <= reset ? In_S : nxt_S;
 end
 
 // Output Logic
@@ -81,13 +68,6 @@ always @(*) begin
 			match_len = 0;
 			char_nxt  = 0;
 			valid     = 0;
-			finish    = 0;
-		end
-		Out_S0: begin // STATE 1
-			offset    = 0;
-			match_len = 0;
-			char_nxt  = in_str[0];
-			valid     = 1;
 			finish    = 0;
 		end
 		Enc_S: begin // STATE 2
@@ -180,13 +160,6 @@ always @(posedge clk/* or cur_S*/) begin
 					in_str[char_cnt] <= chardata;
 					char_cnt <= char_cnt + 1;
 			end
-		end
-		Out_S0: begin // STATE 1
-			sb 		 <= 0;
-			lb 		 <= 1;
-			char_cnt <= 0;
-			ans_offset <= 0;
-			ans_match_len <= 0;
 		end
 		Enc_S: begin // STATE 2
 			sb <= sb; // sb_test;
