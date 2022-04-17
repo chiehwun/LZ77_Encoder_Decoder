@@ -1,23 +1,19 @@
-// Document
+# Document
 *.pdf
 *.txt
 ~$*
 
-// Directory
-incremental_db
-output_files
-simulation
-output_files
-db
+# Directory
+Quartus
+RTL/work
 Doc
-RTL/work/*
 
-// Verilog
+# Verilog
 vsim.wlf
 *.mpf
 *.mti
 
-// Quartus
+#/ Quartus
 *.qpf
 *.qsf
 *.xml
