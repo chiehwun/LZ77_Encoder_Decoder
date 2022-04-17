@@ -51,7 +51,7 @@ always @(*) begin
 			nxt_S = Enc_S;
 		end
 		Enc_S: begin // STATE 2
-			nxt_S = sb_prob < lb ? Enc_S : Out_S;
+			nxt_S = (sb + char_cnt+1) < lb ? Enc_S : Out_S;
 		end
 		Out_S: begin // STATE 3
 			nxt_S = Enc_S;
@@ -94,13 +94,13 @@ always @(*) begin
 			valid     = 0;//sb_prob < lb ? 0 : 1;
 			offset    = 0;
 			match_len = match_len;
-			char_nxt  = in_str[sb + ans_offset];
+			char_nxt  = 0;
 			finish    = 0;
 		end
 		Out_S: begin // STATE 3
-			offset    = Wsearch - ans_offset - 1;
+			offset    = lb - sb - char_cnt - 1;
 			match_len = ans_match_len;
-			char_nxt  = in_str[sb + ans_offset];
+			char_nxt  = in_str[lb + ans_match_len];
 			valid     = 1;
 			finish    = 0;
 		end
@@ -127,8 +127,20 @@ parameter lb_test = 13;
 
 // String Matching (Comb. ckt.)
 wire [63:0] bundle_s, bundle_l, bundle_xor;
-assign bundle_s = {in_str[sb], in_str[sb+1], in_str[sb+2], in_str[sb+3], in_str[sb+4], in_str[sb+5], in_str[sb+6]};
-assign bundle_l = {in_str[lb], in_str[lb+1], in_str[lb+2], in_str[lb+3], in_str[lb+4], in_str[lb+5], in_str[lb+6]};
+assign bundle_s = {	in_str[sb + char_cnt],
+					in_str[sb + char_cnt + 1],
+					in_str[sb + char_cnt + 2],
+					in_str[sb + char_cnt + 3],
+					in_str[sb + char_cnt + 4],
+					in_str[sb + char_cnt + 5],
+					in_str[sb + char_cnt + 6]};
+assign bundle_l = {	in_str[lb],
+					in_str[lb+1],
+					in_str[lb+2],
+					in_str[lb+3],
+					in_str[lb+4],
+					in_str[lb+5],
+					in_str[lb+6]};
 assign bundle_xor = bundle_s ^ bundle_l;
 always @(*) begin
 	if(reset)
@@ -155,9 +167,9 @@ always @(posedge clk/* or cur_S*/) begin
 		in_str[i] <= 0; // Initialize redundant reg
 	case(cur_S)
 		In_S: begin // STATE 0
-			sb <= 0;
+			sb 		<= 0;
 			sb_prob <= 0;
-			lb <= 0;
+			lb 		<= 0;
 			if(reset)
 				char_cnt <= 0;
 			else begin
@@ -169,9 +181,9 @@ always @(posedge clk/* or cur_S*/) begin
 			end
 		end
 		Out_S0: begin // STATE 1
-			sb <= 1;
-			sb_prob <= 0;
-			lb <= 1;
+			sb 		 <= 0;
+			sb_prob  <= 0;
+			lb 		 <= 1;
 			char_cnt <= 0;
 			ans_offset <= 0;
 		end
@@ -179,8 +191,8 @@ always @(posedge clk/* or cur_S*/) begin
 			sb <= sb; // sb_test;
 			lb <= lb; // lb_test;
 			ans_offset <= offset;
-			char_cnt <= char_cnt + (sb_prob < lb ? 1:0);
-			sb_prob <= sb + char_cnt; // char_cnt(old)
+			char_cnt <= char_cnt + (sb + char_cnt+1 < lb ? 1:0);
+			// sb_prob <= sb + char_cnt; // char_cnt(old)
 		end
 		Out_S: begin // STATE 3
 			if(lb + match_len - sb < Wsearch) // lb(old)
