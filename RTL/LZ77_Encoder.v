@@ -34,38 +34,29 @@ reg 			valid;
 reg 			finish;
 reg [3:0] 		offset,    ans_offset;
 reg [2:0] 		match_len, ans_match_len;
-reg [Wchar-1:0] /*char_nxt,*/  ans_char_nxt;
+reg [Wchar-1:0] char_nxt,  ans_char_nxt;
 
 /********** Variables **********/
 reg [Wstate-1:0] 	cur_S, nxt_S;
 reg [Wchar-1:0]		in_str [0:In_len + rdn_len - 1]; // [In_len-1:0]
-reg [Wimg-1:0] 		char_cnt, sb, lb; // Index: 0 - 2048
+reg [Wimg-1:0] 		char_cnt, sb, sb_prob, lb; // Index: 0 - 2048
 
 // Next State Logic
 always @(*) begin
 	case (cur_S)
-		In_S: begin
-			if(char_cnt == In_len - 1)
-				nxt_S = Out_S0;
-			else
-				nxt_S = In_S;
+		In_S: begin // STATE 0
+			nxt_S = (char_cnt == In_len)? Out_S0 : In_S;
 		end
-		Out_S0: begin
+		Out_S0: begin // STATE 1
 			nxt_S = Enc_S;
 		end
-		Enc_S: begin
-			if(valid)
-				nxt_S = Out_S;
-			else
-				nxt_S = Enc_S;
+		Enc_S: begin // STATE 2
+			nxt_S = sb_prob < lb ? Enc_S : Out_S;
 		end
-		Out_S: begin
-			if(valid)
-				nxt_S = Enc_S;
-			else
-				nxt_S = Out_S;
+		Out_S: begin // STATE 3
+			nxt_S = Enc_S;
 		end
-		Fin_S: begin
+		Fin_S: begin // STATE 4
 			nxt_S = Fin_S;
 		end
 		default: nxt_S = In_S;
@@ -85,45 +76,45 @@ end
 // Output Logic
 always @(*) begin
 	case (cur_S)
-		In_S: begin
+		In_S: begin // STATE 0
 			offset    = 0;
 			match_len = 0;
-			// char_nxt  = 0;
+			char_nxt  = 0;
 			valid     = 0;
 			finish    = 0;
 		end
-		Out_S0: begin
+		Out_S0: begin // STATE 1
 			offset    = 0;
 			match_len = 0;
-			// char_nxt  = in_str[0];
+			char_nxt  = in_str[0];
 			valid     = 1;
 			finish    = 0;
 		end
-		Enc_S: begin
+		Enc_S: begin // STATE 2
+			valid     = 0;//sb_prob < lb ? 0 : 1;
 			offset    = 0;
-			match_len = 0;
-			// char_nxt  = 0;
-			valid     = 0;
+			match_len = match_len;
+			char_nxt  = in_str[sb + ans_offset];
 			finish    = 0;
 		end
-		Out_S: begin
-			offset    = ans_offset;
+		Out_S: begin // STATE 3
+			offset    = Wsearch - ans_offset - 1;
 			match_len = ans_match_len;
-			// char_nxt  = ans_char_nxt;
+			char_nxt  = in_str[sb + ans_offset];
 			valid     = 1;
 			finish    = 0;
 		end
-		Fin_S: begin
+		Fin_S: begin // STATE 4
 			offset    = 0;
 			match_len = 0;
-			// char_nxt  = 0;
+			char_nxt  = 0;
 			valid     = 0;
 			finish    = 1;
 		end
 		default: begin
 			offset    = 0;
 			match_len = 0;
-			// char_nxt  = 0;
+			char_nxt  = 0;
 			valid     = 0;
 			finish    = 0;
 		end
@@ -158,38 +149,41 @@ end
 
 // Counter & Encoding
 integer i;
-assign char_nxt = in_str[sb + ans_offset];
-always @(posedge clk) begin
+// Quartus: Only clk signal can be triggered
+always @(posedge clk/* or cur_S*/) begin
 	for (i = In_len; i < In_len + rdn_len; i=i+1)
 		in_str[i] <= 0; // Initialize redundant reg
 	case(cur_S)
-		In_S: begin
-			if(reset) begin
-				char_cnt <= 13'd0;
-				sb <= 0;
-				lb <= 0;
-			end
+		In_S: begin // STATE 0
+			sb <= 0;
+			sb_prob <= 0;
+			lb <= 0;
+			if(reset)
+				char_cnt <= 0;
 			else begin
-				in_str[char_cnt] <= chardata;
-				if(char_cnt > In_len)
+				if(char_cnt == In_len)
 					char_cnt <= 0;
 				else
+					in_str[char_cnt] <= chardata;
 					char_cnt <= char_cnt + 1;
-				sb <= 0;
-				lb <= 0;
 			end
 		end
-		Out_S0: begin
-			char_cnt <= 0;
-			sb <= 0;
+		Out_S0: begin // STATE 1
+			sb <= 1;
+			sb_prob <= 0;
 			lb <= 1;
+			char_cnt <= 0;
+			ans_offset <= 0;
 		end
-		Enc_S: begin
+		Enc_S: begin // STATE 2
 			sb <= sb; // sb_test;
 			lb <= lb; // lb_test;
+			ans_offset <= offset;
+			char_cnt <= char_cnt + (sb_prob < lb ? 1:0);
+			sb_prob <= sb + char_cnt; // char_cnt(old)
 		end
-		Out_S: begin
-			if(lb + match_len - sb < Wsearch) // new / old lb?
+		Out_S: begin // STATE 3
+			if(lb + match_len - sb < Wsearch) // lb(old)
 				sb <= 0;
 			else
 				sb <= sb + match_len;
