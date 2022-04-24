@@ -12,6 +12,9 @@ Doc
 vsim.wlf
 *.mpf
 *.mti
+*.sdo
+*.vo
+*.csd
 
 #/ Quartus
 *.qpf
