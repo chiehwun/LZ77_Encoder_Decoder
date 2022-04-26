@@ -1,10 +1,12 @@
 /* Author: rubato Wun
-Total logic elements:               20,091 / 68,416 ( 29 % )
-    Total combinational functions:  19,992 / 68,416 ( 29 % )
+===== Synthesis Result =====
+Total logic elements:               19,918 / 68,416 ( 29 % )
+    Total combinational functions:  19,901 / 68,416 ( 29 % )
     Dedicated logic registers:      16,494 / 68,416 ( 24 % )
 Total registers:                    16494
 Total memory bits:                  0 / 1,152,000 ( 0 % )
 Embedded Multiplier 9-bit elements: 0 / 300 ( 0 % )
+===== Time Performance =====
 img0: 443,310 ns
 img1: 430,290 ns
 img2: 248,610 ns
@@ -48,7 +50,7 @@ reg [2:0] 		match_len, ans_match_len, c_ml;
 reg [Wchar-1:0] char_nxt;
 
 /********** Variables **********/
-reg [Wstate-1:0] 	cur_S, nxt_S, ctrl_sig;
+reg [Wstate-1:0] 	cur_S, nxt_S;
 reg [Wchar-1:0]		sl_buf [0:Search_len+Look_len-1]; // search & look-ahead buffer
 reg [Wchar-1:0]		in_str [0:In_len-1]; // search & look-ahead buffer
 reg [W_inlen-1:0] 	i;                   // Index: 0 - 2040
@@ -74,30 +76,19 @@ end
 
 // Output Logic
 always @(*) begin
-    ctrl_sig  = cur_S;
-    case (cur_S)
-        Out_S: begin
-            valid     = 1;
-            offset    = ans_offset;
-            match_len = ans_match_len;
-            char_nxt  = sl_buf[Search_len + ans_match_len];
-            finish    = 0;
-        end
-        Fin_S: begin
-            valid     = 0;
-            offset    = 0;
-            match_len = 0;
-            char_nxt  = 0;
-            finish    = 1;
-        end
-        default: begin
-            valid     = 0;
-            offset    = 0;
-            match_len = 0;
-            char_nxt  = 0;
-            finish    = 0;
-        end
-    endcase
+    if(cur_S == Out_S) begin
+        valid     = 1;
+        offset    = ans_offset;
+        match_len = ans_match_len;
+        char_nxt  = sl_buf[Search_len + ans_match_len];
+    end
+    else begin
+        valid     = 0;
+        offset    = 0;
+        match_len = 0;
+        char_nxt  = 0;
+    end
+    finish = (cur_S == Fin_S);
 end
 
 // String Matching (Comb. ckt.)
@@ -139,7 +130,7 @@ end
 // Quartus: Only clk signal can be triggered
 integer j;
 always @(posedge clk) begin
-    case(ctrl_sig)
+    case(cur_S)
         In_S0: begin
             ans_offset     <= 0;
             ans_match_len  <= 0;
@@ -164,11 +155,12 @@ always @(posedge clk) begin
                 ans_offset    <= 4'd8 - sl_ind[3:0];   // Search_len - 1 - sl_ind
                 ans_match_len <= c_ml;
             end
-            sl_ind <= sl_ind + 5'd1;
+            if(sl_ind == Search_len - 1)
+                sl_ind <= 0;
+            else
+                sl_ind <= sl_ind + 5'd1;
         end
-        Out_S: begin
-            sl_ind <= 0;
-        end
+        // Out_S: sl_ind <= 0;
         Shift_S: begin
             for(j = 0; j < (Search_len + Look_len) - 1; j = j + 1)
                 sl_buf[j] <= sl_buf[j + 1];
@@ -183,10 +175,8 @@ always @(posedge clk) begin
                 ans_match_len <= 0;
             end
         end
-        default: begin
-            sl_ind        <= 0;
-            ans_offset    <= 0;
-            ans_match_len <= 0;
+        default: begin // Out_S
+            sl_ind <= 0;
         end
     endcase
 end
