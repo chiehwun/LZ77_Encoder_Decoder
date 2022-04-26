@@ -73,17 +73,17 @@ always @(posedge clk) begin
         Dec_S: begin
             for(i = 0; i < Wsearch-1; i = i + 4'd1)
                 srch_buf[i + 1] <= srch_buf[i];	// Shift left
-                if(cnt == code_len) begin
-                    cnt <= 0;
-                    srch_buf[0] <= chardata;
-                end
-                else begin
-                    cnt <= cnt + 4'd1;
-                    srch_buf[0] <= srch_buf[code_pos];
-                end
-                // output
-                char_nxt <= cnt == code_len? chardata : srch_buf[code_pos];
-                finish   <= 0;
+            if(cnt == code_len) begin
+                cnt <= 0;
+                srch_buf[0] <= chardata;
+            end
+            else begin
+                cnt <= cnt + 4'd1;
+                srch_buf[0] <= srch_buf[code_pos];
+            end
+            // output
+            char_nxt <= cnt == code_len? chardata : srch_buf[code_pos];
+            finish   <= 0;
         end
         Fin_S: begin
             // output
