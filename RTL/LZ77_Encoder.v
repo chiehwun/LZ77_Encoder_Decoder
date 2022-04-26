@@ -1,7 +1,13 @@
 /* Author: rubato Wun
-img0: 475,350 ns
-img1: 461,010 ns
-img2: 261,180 ns
+Total logic elements:               20,091 / 68,416 ( 29 % )
+    Total combinational functions:  19,992 / 68,416 ( 29 % )
+    Dedicated logic registers:      16,494 / 68,416 ( 24 % )
+Total registers:                    16494
+Total memory bits:                  0 / 1,152,000 ( 0 % )
+Embedded Multiplier 9-bit elements: 0 / 300 ( 0 % )
+img0: 443,310 ns
+img1: 430,290 ns
+img2: 248,610 ns
 */
 module LZ77_Encoder(clk,reset,chardata,valid, encode,finish,offset,match_len,char_nxt);
 input 				clk;
@@ -32,15 +38,13 @@ parameter 	[Wstate-1:0] 	In_S1   = 1;
 parameter 	[Wstate-1:0] 	Enc_S   = 2;
 parameter 	[Wstate-1:0] 	Out_S   = 3;
 parameter 	[Wstate-1:0] 	Shift_S = 4;
-parameter 	[Wstate-1:0] 	Res_S   = 5;
-parameter 	[Wstate-1:0] 	Fin_S   = 6;
-
+parameter 	[Wstate-1:0] 	Fin_S   = 5;
 
 // Output register
 reg 			valid;
 reg 			finish;
 reg [3:0] 		offset,    ans_offset;
-reg [2:0] 		match_len, ans_match_len, c_ml, shift_cnt;
+reg [2:0] 		match_len, ans_match_len, c_ml;
 reg [Wchar-1:0] char_nxt;
 
 /********** Variables **********/
@@ -57,8 +61,7 @@ always @(*) begin
         In_S1:   nxt_S = (i == In_len)?                                  Out_S : In_S1;
         Enc_S:   nxt_S = (sl_ind == Search_len - 1)?                     Out_S : Enc_S;
         Out_S:   nxt_S = (sl_buf[Search_len + ans_match_len] == EndSgn)? Fin_S : Shift_S;
-        Shift_S: nxt_S = (shift_cnt == ans_match_len)?                   Res_S : Shift_S;
-        Res_S:   nxt_S = Enc_S;
+        Shift_S: nxt_S = (ans_match_len == 0)?                           Enc_S : Shift_S;
         Fin_S:   nxt_S = Fin_S;
         default: nxt_S = In_S0;
     endcase
@@ -148,7 +151,6 @@ always @(posedge clk) begin
                 sl_ind <= sl_ind + 5'd1;
             for(j = 0; j < Search_len; j = j + 1)
                 sl_buf[j] = EndSgn;
-            shift_cnt <= 0;
         end
         In_S1: begin
             ans_offset    <= 0;
@@ -156,19 +158,16 @@ always @(posedge clk) begin
             sl_ind        <= 0;
             in_str[i]     <= chardata;
             i <= i + 12'd1;
-            shift_cnt <= 0;
         end
         Enc_S: begin
             if(c_ml > ans_match_len) begin
                 ans_offset    <= 4'd8 - sl_ind[3:0];   // Search_len - 1 - sl_ind
                 ans_match_len <= c_ml;
             end
-            sl_ind    <= sl_ind + 5'd1;
-            shift_cnt <= 0;
+            sl_ind <= sl_ind + 5'd1;
         end
         Out_S: begin
-            sl_ind    <= 0;
-            shift_cnt <= 0;
+            sl_ind <= 0;
         end
         Shift_S: begin
             for(j = 0; j < (Search_len + Look_len) - 1; j = j + 1)
@@ -176,14 +175,18 @@ always @(posedge clk) begin
             sl_buf[(Search_len + Look_len) - 1] <= in_str[0];
             for(j = 0; j < In_len - 1; j = j + 1)
                 in_str[j] <= in_str[j + 1];
-            shift_cnt <= shift_cnt + 3'd1;
+            if(ans_match_len > 0)
+                ans_match_len <= ans_match_len - 3'd1;
+            else begin
+                sl_ind        <= 0;
+                ans_offset    <= 0;
+                ans_match_len <= 0;
+            end
         end
-        Res_S: begin
+        default: begin
             sl_ind        <= 0;
             ans_offset    <= 0;
             ans_match_len <= 0;
-        end
-        default: begin
         end
     endcase
 end
