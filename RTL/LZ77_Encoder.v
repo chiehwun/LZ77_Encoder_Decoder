@@ -100,14 +100,14 @@ end
 // String Matching (Comb. ckt.)
 // match_len: 0-7
 wire [55:0] bundle_s, bundle_l, bundle_xor;
-assign bundle_s = {	sl_buf[sl_ind],
+assign bundle_s = { sl_buf[sl_ind],
                     sl_buf[sl_ind + 1],
                     sl_buf[sl_ind + 2],
                     sl_buf[sl_ind + 3],
                     sl_buf[sl_ind + 4],
                     sl_buf[sl_ind + 5],
                     sl_buf[sl_ind + 6]};
-assign bundle_l = {	sl_buf[9],
+assign bundle_l = { sl_buf[9],
                     sl_buf[10],
                     sl_buf[11],
                     sl_buf[12],
