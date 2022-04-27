@@ -1,9 +1,9 @@
 /* Author: rubato Wun
 ===== Synthesis Result =====
-Total logic elements:               113 / 68,416 ( < 1 % )
-    Total combinational functions:  84 / 68,416 ( < 1 % )
-    Dedicated logic registers:      88 / 68,416 ( < 1 % )
-Total registers:                    88
+Total logic elements:               86 / 68,416 ( < 1 % )
+    Total combinational functions:  56 / 68,416 ( < 1 % )
+    Dedicated logic registers:      77 / 68,416 ( < 1 % )
+Total registers:                    77
 Total memory bits:                  0 / 1,152,000 ( 0 % )
 Embedded Multiplier 9-bit elements: 0 / 300 ( 0 % )
 ===== Time Performance =====
@@ -21,78 +21,41 @@ output  			encode;
 output  			finish;
 output 	 	[7:0] 	char_nxt;
 
-assign encode = 0;
-
 // Define Width
 parameter Wsearch = 9;	// Search buffer    =>  9 chars
 parameter Wchar   = 8;	// char  	        =>  8 bits
-parameter Wstate  = 2;	// state 0-3        =>  3 bits
 
 // Constant
 parameter   [Wchar-1:0]	    EndSgn = 8'h24; // Dollar sign: '$'
 
-// Define State & Constrol Signal
-parameter 	[Wstate-1:0] 	Dec_S0 = 0;
-parameter 	[Wstate-1:0] 	Dec_S  = 1;
-parameter 	[Wstate-1:0] 	Fin_S  = 2;
-
 /********** Variables **********/
-reg 		[Wstate-1:0] 	cur_S, nxt_S;
-reg 		[Wchar-1:0] 	char_nxt;
 reg 		[Wchar-1:0]		srch_buf  [Wsearch-1:0];
 reg 		[3:0]   		cnt, i;	// 0-(Wsearch-1): 4 bits
 
-// Output register
-reg 			finish;
+// Output
+reg 		finish;
+assign encode   = 0;
+assign char_nxt = srch_buf[0];
 
-// Next State Logic
-always @(*) begin
-    case (cur_S)
-        Dec_S0:  nxt_S 	= Dec_S;
-        Dec_S: 	 nxt_S 	= (chardata == EndSgn && cnt == code_len)? Fin_S : Dec_S;
-        Fin_S: 	 nxt_S 	= Fin_S;
-        default: nxt_S 	= Dec_S0;
-    endcase
-end
-
-// State Register
+// Decoder
 always @(posedge clk) begin
-    cur_S <= reset ? Dec_S0 : nxt_S;
-end
-
-// Datapath: Decoder
-always @(posedge clk) begin
-    // CONTROL SIGNAL & OUTPUT should be triggered at the posedge !!!
-    // so that the golden pattern will be checked
-    // while the OUTPUT update at the posedge.
-    case(cur_S)
-        Dec_S0: begin
+    if(reset) begin
+        cnt <= 0;   
+        finish <= 0;
+    end
+    else begin
+        for(i = 0; i < Wsearch-1; i = i + 4'd1)
+            srch_buf[i + 1] <= srch_buf[i];	// Shift left
+        if(cnt == code_len) begin
+            cnt         <= 0;
             srch_buf[0] <= chardata;
-            cnt <= 0;
-            // output
-            char_nxt <= chardata;
-            finish   <= 0;
         end
-        Dec_S: begin
-            for(i = 0; i < Wsearch-1; i = i + 4'd1)
-                srch_buf[i + 1] <= srch_buf[i];	// Shift left
-            if(cnt == code_len) begin
-                cnt <= 0;
-                srch_buf[0] <= chardata;
-            end
-            else begin
-                cnt <= cnt + 4'd1;
-                srch_buf[0] <= srch_buf[code_pos];
-            end
-            // output
-            char_nxt <= cnt == code_len? chardata : srch_buf[code_pos];
-            finish   <= 0;
+        else begin
+            cnt         <= cnt + 4'd1;
+            srch_buf[0] <= srch_buf[code_pos];
         end
-        default: begin // Fin_S
-            // output
-            char_nxt <= 8'h00;
-            finish   <= 1;
-        end
-    endcase
+        // output
+        finish   <=  srch_buf[0] == EndSgn;
+    end
 end
 endmodule
