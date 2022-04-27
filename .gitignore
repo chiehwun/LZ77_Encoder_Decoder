@@ -13,8 +13,6 @@ RTL_test
 vsim.wlf
 *.mpf
 *.mti
-*.sdo
-*.vo
 *.csd
 
 #/ Quartus
