@@ -37,7 +37,7 @@ parameter 	[Wstate-1:0] 	Dec_S  = 1;
 parameter 	[Wstate-1:0] 	Fin_S  = 2;
 
 /********** Variables **********/
-reg 		[Wstate-1:0] 	cur_S, nxt_S, ctrl_sig;
+reg 		[Wstate-1:0] 	cur_S, nxt_S;
 reg 		[Wchar-1:0] 	char_nxt;
 reg 		[Wchar-1:0]		srch_buf  [Wsearch-1:0];
 reg 		[3:0]   		cnt, i;	// 0-(Wsearch-1): 4 bits
@@ -60,22 +60,12 @@ always @(posedge clk) begin
     cur_S <= reset ? Dec_S0 : nxt_S;
 end
 
-// Output Logic
-always @(*) begin
-    case (cur_S)
-        Dec_S0: 	ctrl_sig = Dec_S0;
-        Dec_S: 		ctrl_sig = Dec_S;
-        Fin_S: 		ctrl_sig = Fin_S;
-        default: 	ctrl_sig = Dec_S0;
-    endcase
-end
-
 // Datapath: Decoder
 always @(posedge clk) begin
     // CONTROL SIGNAL & OUTPUT should be triggered at the posedge !!!
     // so that the golden pattern will be checked
     // while the OUTPUT update at the posedge.
-    case(ctrl_sig)
+    case(cur_S)
         Dec_S0: begin
             srch_buf[0] <= chardata;
             cnt <= 0;
@@ -98,12 +88,7 @@ always @(posedge clk) begin
             char_nxt <= cnt == code_len? chardata : srch_buf[code_pos];
             finish   <= 0;
         end
-        Fin_S: begin
-            // output
-            char_nxt <= 8'h00;
-            finish   <= 1;
-        end
-        default: begin
+        default: begin // Fin_S
             // output
             char_nxt <= 8'h00;
             finish   <= 1;
