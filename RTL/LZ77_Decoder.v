@@ -1,3 +1,16 @@
+/* Author: rubato Wun
+===== Synthesis Result =====
+Total logic elements:               113 / 68,416 ( < 1 % )
+    Total combinational functions:  84 / 68,416 ( < 1 % )
+    Dedicated logic registers:      88 / 68,416 ( < 1 % )
+Total registers:                    88
+Total memory bits:                  0 / 1,152,000 ( 0 % )
+Embedded Multiplier 9-bit elements: 0 / 300 ( 0 % )
+===== Time Performance =====
+img0: 61,620 ns
+img1: 61,620 ns
+img2: 61,620 ns
+*/
 module LZ77_Decoder(clk,reset,code_pos,code_len,chardata,encode,finish,char_nxt);
 input 				clk;
 input 				reset;
