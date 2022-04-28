@@ -7,7 +7,7 @@
 Quartus
 RTL/work
 Doc
-RTL_test
+Parallel_Test
 
 # Verilog
 vsim.wlf
