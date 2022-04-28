@@ -1,7 +1,7 @@
 /* Author: rubato Wun
 ===== Synthesis Result =====
-Total logic elements:               19,918 / 68,416 ( 29 % )
-    Total combinational functions:  19,901 / 68,416 ( 29 % )
+Total logic elements:               19,930 / 68,416 ( 29 % )
+    Total combinational functions:  19,894 / 68,416 ( 29 % )
     Dedicated logic registers:      16,494 / 68,416 ( 24 % )
 Total registers:                    16494
 Total memory bits:                  0 / 1,152,000 ( 0 % )
@@ -26,7 +26,7 @@ assign encode = 1;
 // Define Width
 parameter [4:0] Wchar = 8;			// char  			 =>  8 bits
 parameter [4:0] Search_len = 9;		// Search buffer     =>  9 chars
-parameter [4:0] Look_len = 8;		// Look-ahead buffe  =>  8 chars
+parameter [4:0] Look_len = 8;		// Look-ahead buffer =>  8 chars
 parameter In_len = 2049 - Look_len;	// 2049 // 22
 parameter W_inlen = 12;				// img_length: 2041  => 12 bits
 parameter Wstate = 3;				// state 0-4         =>  3 bits
@@ -52,9 +52,9 @@ reg [Wchar-1:0] char_nxt;
 /********** Variables **********/
 reg [Wstate-1:0] 	cur_S, nxt_S;
 reg [Wchar-1:0]		sl_buf [0:Search_len+Look_len-1]; // search & look-ahead buffer
-reg [Wchar-1:0]		in_str [0:In_len-1]; // search & look-ahead buffer
-reg [W_inlen-1:0] 	i;                   // Index: 0 - 2040
-reg [4:0]           sl_ind;              // Index: 0 - 16
+reg [Wchar-1:0]		in_str [0:In_len-1];              // search & look-ahead buffer
+reg [W_inlen-1:0] 	i;                                // Index: 0 - 2040
+reg [4:0]           sl_ind;                           // Index: 0 - 16
 
 // Next State Logic
 always @(*) begin
@@ -76,19 +76,11 @@ end
 
 // Output Logic
 always @(*) begin
-    if(cur_S == Out_S) begin
-        valid     = 1;
-        offset    = ans_offset;
-        match_len = ans_match_len;
-        char_nxt  = sl_buf[Search_len + ans_match_len];
-    end
-    else begin
-        valid     = 0;
-        offset    = 0;
-        match_len = 0;
-        char_nxt  = 0;
-    end
-    finish = (cur_S == Fin_S);
+    valid     = (cur_S == Out_S);
+    offset    = ans_offset;
+    match_len = ans_match_len;
+    char_nxt  = sl_buf[Search_len + ans_match_len];
+    finish    = (cur_S == Fin_S);
 end
 
 // String Matching (Comb. ckt.)
@@ -113,16 +105,22 @@ always @(*) begin
     if (reset)
         c_ml = 3'd0;
     else begin
-        casex(bundle_xor)
-            56'h00000000000000: c_ml = 7;
-            56'h000000000000xx: c_ml = 6;
-            56'h0000000000xxxx: c_ml = 5;
-            56'h00000000xxxxxx: c_ml = 4;
-            56'h000000xxxxxxxx: c_ml = 3;
-            56'h0000xxxxxxxxxx: c_ml = 2;
-            56'h00xxxxxxxxxxxx: c_ml = 1;
-            default: 			c_ml = 0;
-        endcase
+        if(bundle_xor == 0)
+            c_ml = 7;
+        else if(bundle_xor[55:8] == 0)
+            c_ml = 6;
+        else if(bundle_xor[55:16] == 0)
+            c_ml = 5;
+        else if(bundle_xor[55:24] == 0)
+            c_ml = 4;
+        else if(bundle_xor[55:32] == 0)
+            c_ml = 3;
+        else if(bundle_xor[55:40] == 0)
+            c_ml = 2;
+        else if(bundle_xor[55:48] == 0)
+            c_ml = 1;
+        else
+            c_ml = 0;
     end
 end
 
