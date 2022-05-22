@@ -6,16 +6,22 @@
 # Directory
 Quartus
 RTL/work
+RTL_TA_example/work
+RTL_TA_example/*.sv
+RTL_TA_example/*/*.dat
+RTL/*.vo
+RTL/*.sdo
 Doc
 Parallel_Test
 
-# Verilog
+# ModelSim
 vsim.wlf
 *.mpf
 *.mti
 *.csd
+*.vstf
 
-#/ Quartus
+# Quartus
 *.qpf
 *.qsf
 *.xml
